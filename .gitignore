@@ -1,0 +1,46 @@
+# ============================================================
+# Secrets — never commit
+# ============================================================
+.env
+*.env
+!.env.example
+# Node-RED runtime credentials (encrypted, but never publish)
+flows_cred.json
+# Keys / certificates
+*.pem
+*.key
+*.p12
+*.pfx
+
+# ============================================================
+# Captured traffic / datasets — may contain IPs, MACs, payloads (PII)
+# ============================================================
+*.pcap
+*.pcapng
+captures/
+datasets/
+*.log
+
+# ============================================================
+# Runtime data / Docker volumes — not source
+# ============================================================
+data/
+*.db
+*.sqlite
+influxdb_data/
+grafana_data/
+nodered_data/
+mosquitto/data/
+mosquitto/log/
+
+# ============================================================
+# Third-party source (reference by URL, don't vendor)
+# ============================================================
+OpenPLC_v3/
+
+# ============================================================
+# OS / editor cruft
+# ============================================================
+.DS_Store
+Thumbs.db
+*.swp

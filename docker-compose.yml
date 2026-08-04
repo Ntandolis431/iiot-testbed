@@ -1,0 +1,116 @@
+# IIoT Security Testbed — reproducible, public-safe stack
+#
+#   1. cp .env.example .env   &&  edit .env with your own values
+#   2. docker compose up -d
+#
+# Security posture (deliberate, for an ISOLATED research lab):
+#   - All host ports bind to 127.0.0.1 only (not reachable from your LAN).
+#   - No secrets are committed: credentials come from .env (gitignored).
+#   - Images are pinned by digest for reproducibility.
+#   - The MQTT broker allows anonymous access ON PURPOSE — it is part of the
+#     "insecure communication / weak authentication" attack surface under study.
+#   Do NOT expose this stack to an untrusted network.
+
+name: iiot-testbed
+
+networks:
+  iiot-net:
+    driver: bridge
+
+volumes:
+  fuxa_appdata: {}
+  fuxa_db: {}
+  fuxa_logs: {}
+  fuxa_images: {}
+  mosquitto_data: {}
+  mosquitto_log: {}
+  nodered_data: {}
+  influxdb_data: {}
+  influxdb_config: {}
+  grafana_data: {}
+
+services:
+  # --- Industrial layer: PLC ---
+  openplc:
+    # Built locally from https://github.com/thiagoralves/OpenPLC_v3
+    #   git clone https://github.com/thiagoralves/OpenPLC_v3.git && cd OpenPLC_v3 && docker build -t openplc:v3 .
+    image: openplc:v3
+    container_name: openplc
+    privileged: true
+    restart: unless-stopped
+    networks: [iiot-net]
+    ports:
+      - "127.0.0.1:8080:8080"   # web UI
+      - "127.0.0.1:502:502"     # Modbus TCP
+
+  # --- SCADA / HMI ---
+  fuxa:
+    image: frangoteam/fuxa@sha256:d00706db09992305eb11c113cc72dfee1c47f32a5bf21896d8042b494d82bf62
+    container_name: fuxa
+    restart: unless-stopped
+    networks: [iiot-net]
+    ports:
+      - "127.0.0.1:1881:1881"
+    volumes:
+      - fuxa_appdata:/usr/src/app/FUXA/server/_appdata
+      - fuxa_db:/usr/src/app/FUXA/server/_db
+      - fuxa_logs:/usr/src/app/FUXA/server/_logs
+      - fuxa_images:/usr/src/app/FUXA/server/_images
+
+  # --- Edge: MQTT broker ---
+  mosquitto:
+    image: eclipse-mosquitto@sha256:6f8d8a947c506f8a2290ec65cd4bd2bc7cb4d43fb5f6271f861cb013e2ef9797
+    container_name: mosquitto
+    restart: unless-stopped
+    networks: [iiot-net]
+    ports:
+      - "127.0.0.1:1883:1883"
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_log:/mosquitto/log
+
+  # --- Edge: gateway / flows ---
+  nodered:
+    image: nodered/node-red@sha256:10f40d0a83e7e5852b13d4d472b2006b05b1cca6d55e2f29a55a12c25a630cb6
+    container_name: nodered
+    restart: unless-stopped
+    networks: [iiot-net]
+    ports:
+      - "127.0.0.1:1880:1880"
+    volumes:
+      - nodered_data:/data
+    # Palettes required: node-red-contrib-modbus, node-red-contrib-influxdb
+
+  # --- Monitoring: historian ---
+  influxdb:
+    image: influxdb@sha256:9f29465df7a15d427e046681cfc7b3da9753e75825c6864f8d3cf5b3aa3cca3d
+    container_name: influxdb
+    restart: unless-stopped
+    networks: [iiot-net]
+    ports:
+      - "127.0.0.1:8086:8086"
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: ${INFLUXDB_USERNAME}
+      DOCKER_INFLUXDB_INIT_PASSWORD: ${INFLUXDB_PASSWORD}
+      DOCKER_INFLUXDB_INIT_ORG: ${INFLUXDB_ORG}
+      DOCKER_INFLUXDB_INIT_BUCKET: ${INFLUXDB_BUCKET}
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUXDB_ADMIN_TOKEN}
+    volumes:
+      - influxdb_data:/var/lib/influxdb2
+      - influxdb_config:/etc/influxdb2
+
+  # --- Monitoring: dashboards ---
+  grafana:
+    image: grafana/grafana@sha256:1c1bd67c54c5fcf6e759897852b5a584191bd6796e8d328a5ace457799801261
+    container_name: grafana
+    restart: unless-stopped
+    networks: [iiot-net]
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+    volumes:
+      - grafana_data:/var/lib/grafana

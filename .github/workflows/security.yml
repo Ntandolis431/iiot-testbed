@@ -1,0 +1,39 @@
+# CI security checks for the IIoT testbed repo.
+# PLACE THIS FILE AT:  .github/workflows/security.yml  (rename + move it there)
+#
+# Runs on every push and pull request:
+#   - gitleaks: scans the FULL git history for committed secrets (fails the build on any find)
+#   - pre-commit: runs the same hooks you use locally (gitleaks + hygiene), repo-wide
+# Free for public repositories. No tokens or licenses required.
+
+name: security-checks
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  secret-scan:
+    name: Secret scan (gitleaks, full history)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0            # full history so gitleaks can scan every commit
+      - name: Run gitleaks
+        run: |
+          docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest \
+            detect --source=/repo --redact -v
+
+  pre-commit:
+    name: Pre-commit hooks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - uses: pre-commit/action@v3.0.1

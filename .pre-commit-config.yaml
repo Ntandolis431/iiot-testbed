@@ -1,0 +1,23 @@
+# Pre-commit hooks for the IIoT testbed repo.
+# IMPORTANT: rename to ".pre-commit-config.yaml" (leading dot) at the repo root.
+# Install once:  pipx install pre-commit && pre-commit install && pre-commit autoupdate
+# Runs automatically on every `git commit`; blocks the commit if a secret is found.
+
+repos:
+  # --- Secret scanning: block credentials/keys before they are committed ---
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.2          # run `pre-commit autoupdate` to pin the latest release
+    hooks:
+      - id: gitleaks
+
+  # --- General hygiene ---
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: detect-private-key      # catches PEM/SSH private keys
+      - id: check-added-large-files # blocks accidental big blobs (e.g. PCAPs, datasets)
+        args: ["--maxkb=2048"]
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-yaml
+      - id: check-merge-conflict
