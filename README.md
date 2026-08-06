@@ -42,6 +42,24 @@ All containers share the `iiot-net` Docker bridge and address each other by name
 (`openplc:502`, `mosquitto:1883`, `influxdb:8086`). Images are pinned by digest in
 `docker-compose.yml` for reproducibility.
 
+## Screenshots
+
+**Grafana — live sensor dashboard** (temperature, pressure, flow, level, historised from Modbus via Node-RED → InfluxDB):
+
+![Grafana sensor dashboard](docs/images/grafana-sensors.png)
+
+**Node-RED — edge gateway flow** (reads OpenPLC over Modbus, publishes to MQTT and writes to InfluxDB):
+
+![Node-RED Modbus to MQTT/InfluxDB flow](docs/images/nodered-flow.png)
+
+**OpenPLC — PLC runtime** running the simulated process program:
+
+![OpenPLC dashboard](docs/images/openplc-dashboard.png)
+
+**FUXA — SCADA/HMI** reading the Modbus tags live (coil + four holding registers):
+
+![FUXA live sensor tags](docs/images/fuxa-sensors.png)
+
 ## Prerequisites
 
 - Docker (tested with Docker 29.x under WSL2 / Ubuntu 24.04)
