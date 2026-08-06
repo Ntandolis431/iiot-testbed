@@ -111,7 +111,7 @@ feature extraction against the **CIC Modbus 2023** dataset.
 - [x] MQTT broker (Mosquitto)
 - [x] Edge gateway (Node-RED): Modbus -> MQTT
 - [x] Simulated sensors (temp/pressure/flow/level)
-- [ ] Historian (InfluxDB) + Grafana dashboards (in progress)
+- [x] Historian (InfluxDB) + Grafana dashboards
 - [ ] Traffic capture + feature extraction (Zeek / CICFlowMeter)
 - [ ] Attack simulation (Kali, pymodbus, Ettercap/Bettercap)
 - [ ] ML detection + impact scoring
