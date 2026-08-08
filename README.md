@@ -108,6 +108,28 @@ plc/sensors.st            # temp/pressure/flow/level on Modbus holding registers
 # grafana/dashboard.json   (export from Grafana)
 ```
 
+## Traffic capture & features
+
+Traffic is captured and turned into ML-ready features with a **capture-only** tool
+(tcpdump) feeding a **feature-extraction** tool (Zeek) — Wireshark/tshark are used for raw
+capture only, never for feature computation.
+
+A persistent **`zeek-live`** capture sniffs OpenPLC's Modbus traffic and continuously
+appends `conn.log` (flow features) and `modbus.log` (Modbus semantics: function codes,
+transaction IDs, exceptions) for as long as the stack runs. Start it and snapshot to CSV:
+
+```bash
+bash scripts/start-live-capture.sh   # runs continuously (restart unless-stopped)
+bash scripts/refresh-csv.sh          # snapshot live logs -> {modbus,conn}.csv
+```
+
+Capture data is written to a **Linux-native path** (`$HOME/iiot-captures` by default;
+override with `IIOT_CAP_DIR`) rather than the repo/Windows filesystem — this avoids
+WSL/Windows file-locking and is much faster for continuous writes. Traffic data is never
+committed. `conn.log` + `modbus.log` are joined on the `uid` field, and the same Zeek
+processing is applied to the CIC Modbus 2023 pcaps for consistent feature extraction
+during validation.
+
 ## Security
 
 See `SECURITY.md`. Credentials are injected at runtime from a gitignored `.env`; no real

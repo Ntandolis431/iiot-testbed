@@ -28,6 +28,7 @@ volumes:
   influxdb_data: {}
   influxdb_config: {}
   grafana_data: {}
+  zeek_logs: {}
 
 services:
   # --- Industrial layer: PLC ---
@@ -114,3 +115,19 @@ services:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
     volumes:
       - grafana_data:/var/lib/grafana
+
+  # --- Live traffic capture + feature extraction (Zeek) ---
+  # Shares OpenPLC's network namespace to sniff its Modbus traffic, and
+  # continuously appends conn.log / modbus.log to ./captures/live.
+  # Snapshot to CSV with scripts/refresh-csv.sh.
+  zeek-live:
+    image: zeek/zeek@sha256:eca2b3915d3e067cbb4a904f23f4c4f461ea2b60613ab30f7ee77bbc707c87c7
+    container_name: zeek-live
+    network_mode: "service:openplc"      # sniff OpenPLC's interface (Modbus :502)
+    cap_add: [NET_RAW, NET_ADMIN]
+    depends_on: [openplc]
+    restart: unless-stopped
+    working_dir: /logs
+    volumes:
+      - zeek_logs:/logs           # Docker-managed volume (avoids WSL/Windows FS locking)
+    command: zeek -i eth0 -C
