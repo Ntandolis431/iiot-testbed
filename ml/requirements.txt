@@ -1,0 +1,6 @@
+scikit-learn>=1.3
+pandas>=1.5
+numpy>=1.23
+scipy>=1.9
+# optional (tabular SOTA baseline; pipeline auto-detects it):
+# xgboost>=1.7

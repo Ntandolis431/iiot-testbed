@@ -44,3 +44,7 @@ OpenPLC_v3/
 .DS_Store
 Thumbs.db
 *.swp
+
+# Python
+__pycache__/
+*.pyc

@@ -13,9 +13,13 @@ CAP_DIR="${IIOT_CAP_DIR:-$HOME/iiot-captures}"
 ATTACKER_IP="${ATTACKER_IP:-172.18.0.8}"
 
 python3 - "$CAP_DIR" "$ATTACKER_IP" <<'PY'
-import csv, os, sys, glob
+import csv, os, sys, glob, re
 from collections import Counter
 cap, attacker = sys.argv[1], sys.argv[2]
+
+def base_label(sess):
+    # collapse repeated runs: "recon-01","recon_3" -> "recon"
+    return re.sub(r"[-_]\d+$", "", sess)
 
 def read_zeek(path):
     if not os.path.exists(path):
@@ -37,7 +41,7 @@ def export(logname, outname, include_live):
         sess = os.path.basename(d)
         for r in read_zeek(os.path.join(d, logname)):
             r["session"] = sess
-            r["label"] = sess if r.get("id.orig_h") == attacker else "benign"
+            r["label"] = base_label(sess) if r.get("id.orig_h") == attacker else "benign"
             rows.append(r)
             for k in r:
                 if k not in allfields:
