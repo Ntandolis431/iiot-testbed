@@ -84,6 +84,10 @@ conn_agg = defaultdict(lambda: {
 mb_agg = defaultdict(lambda: {
     "n": 0, "req": 0, "read": 0, "write": 0, "other": 0,
     "func": Counter(), "tid": set(), "unit": set(), "exc": 0})
+# register-address coverage per window (from modbus_addr.log, produced by
+# zeek/modbus-memmap.zeek). Separates an address-sweeping read enumeration
+# (many distinct addresses) from benign polling (a few fixed ones).
+addr_agg = defaultdict(lambda: {"addrs": set(), "amin": None, "amax": None})
 win_meta = {}   # key -> (session, orig_h, label, t_start)
 
 sessions = sorted(glob.glob(os.path.join(CAP, "sessions", "*")))
@@ -166,6 +170,23 @@ for d in sessions:
         if exc and exc not in ("-", "NONE", ""):
             m["exc"] += 1
 
+    # register-address coverage (optional log from zeek/modbus-memmap.zeek)
+    for r in read_zeek(os.path.join(d, "addr", "modbus_addr.log")):
+        oh = r.get("orig_h", "")
+        ts = num(r.get("ts"))
+        wi = int((ts - t0) // W)
+        key = (sess, oh, wi)
+        lab = base_label(sess) if oh == ATTACKER else "benign"
+        win_meta.setdefault(key, (sess, oh, lab, t0 + wi * W))
+        try:
+            adv = int(float(r.get("address")))
+        except (TypeError, ValueError):
+            continue
+        a = addr_agg[key]
+        a["addrs"].add(adv)
+        a["amin"] = adv if a["amin"] is None else min(a["amin"], adv)
+        a["amax"] = adv if a["amax"] is None else max(a["amax"], adv)
+
 cols = ["session", "orig_h", "window", "t_start", "label",
         "cn_n_conns", "cn_uniq_dport", "cn_uniq_dst", "cn_orig_pkts",
         "cn_resp_pkts", "cn_orig_bytes", "cn_resp_bytes", "cn_dur_mean",
@@ -173,7 +194,7 @@ cols = ["session", "orig_h", "window", "t_start", "label",
         "cn_conn_rate",
         "mb_n", "mb_req", "mb_read", "mb_write", "mb_other", "mb_uniq_func",
         "mb_func_entropy", "mb_uniq_tid", "mb_uniq_unit", "mb_exc",
-        "mb_write_ratio", "mb_rate"]
+        "mb_write_ratio", "mb_rate", "mb_uniq_addr", "mb_addr_span"]
 
 rows = []
 for key in sorted(win_meta):
@@ -216,6 +237,13 @@ for key in sorted(win_meta):
     else:
         for k in cols[19:]:
             row[k] = 0
+    ad = addr_agg.get(key)
+    if ad and ad["addrs"]:
+        row["mb_uniq_addr"] = len(ad["addrs"])
+        row["mb_addr_span"] = ad["amax"] - ad["amin"]
+    else:
+        row["mb_uniq_addr"] = 0
+        row["mb_addr_span"] = 0
     rows.append(row)
 
 with open(OUT, "w", newline="") as f:

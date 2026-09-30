@@ -48,3 +48,9 @@ Thumbs.db
 # Python
 __pycache__/
 *.pyc
+
+# Trained model binaries (regenerable); keep residual_model.json
+ml/models/*.joblib
+# OPC UA phase not ready to publish (hardcoded lab password)
+opcua/
+paper/
